@@ -8,7 +8,7 @@ from django.utils.functional import cached_property
 from django.utils.six.moves import input
 
 TEST_DATABASE_PREFIX = 'test_'
-PASSWORD = 'Im_a_lumberjack'
+PASSWORD = 'Im_a_lumberjack'  # FIXME WTF!
 
 
 class DatabaseCreation(BaseDatabaseCreation):
@@ -191,7 +191,7 @@ class DatabaseCreation(BaseDatabaseCreation):
         if verbosity >= 2:
             print("_create_test_db(): dbname = %s" % parameters['user'])
         statements = [
-            """CREATE TABLESPACE %(tblspace)s
+            """CREATE TABLESPACE %(tblspace)s NOLOGGING
                DATAFILE '%(datafile)s' SIZE 20M
                REUSE AUTOEXTEND ON NEXT 10M MAXSIZE %(maxsize)s
             """,
