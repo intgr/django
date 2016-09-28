@@ -387,3 +387,14 @@ class UUIDChild(PrimaryKeyUUIDModel):
 
 class UUIDGrandchild(UUIDChild):
     pass
+
+
+class UUIDClashField(models.UUIDField):
+    const_val = 'e162cd9e-3eaa-4587-8ed1-6a51f835ecc4'
+
+    def get_pk_value_on_save(self, instance):
+        return self.const_val
+
+
+class PrimaryKeyUUIDClashModel(models.Model):
+    id = UUIDClashField(primary_key=True)

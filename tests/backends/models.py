@@ -5,6 +5,7 @@ from django.contrib.contenttypes.fields import (
 )
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.expressions import RawSQL
 from django.utils.encoding import python_2_unicode_compatible
 
 
@@ -113,3 +114,12 @@ class ObjectReference(models.Model):
 
 class RawData(models.Model):
     raw_data = models.BinaryField()
+
+
+class OracleLegacyAutoField(models.AutoField):
+    def get_pk_value_on_save(self, instance):
+        return RawSQL('"BACKENDS_ORACLELEGACYTABLE_SQ".NEXTVAL', ())
+
+
+class OracleLegacyTable(models.Model):
+    id = OracleLegacyAutoField(primary_key=True)

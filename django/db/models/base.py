@@ -879,12 +879,12 @@ class Model(six.with_metaclass(ModelBase)):
                        if f.name in update_fields or f.attname in update_fields]
 
         pk_val = self._get_pk_val(meta)
-        if pk_val is None:
+        pk_set = pk_val is not None
+        if not pk_set:
+            if force_update or update_fields:
+                raise ValueError("Cannot force an update in save() with no primary key.")
             pk_val = meta.pk.get_pk_value_on_save(self)
             setattr(self, meta.pk.attname, pk_val)
-        pk_set = pk_val is not None
-        if not pk_set and (force_update or update_fields):
-            raise ValueError("Cannot force an update in save() with no primary key.")
         updated = False
         # If possible, try an UPDATE. If that doesn't update anything, do an INSERT.
         if pk_set and not force_insert:
@@ -908,7 +908,7 @@ class Model(six.with_metaclass(ModelBase)):
                 self._order = order_value
 
             fields = meta.local_concrete_fields
-            if not pk_set:
+            if pk_val is None:
                 fields = [f for f in fields if not isinstance(f, AutoField)]
 
             update_pk = bool(meta.has_auto_field and not pk_set)

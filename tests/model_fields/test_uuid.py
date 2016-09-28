@@ -9,8 +9,7 @@ from django.test import (
 
 from .models import (
     NullableUUIDModel, PrimaryKeyUUIDModel, RelatedToUUIDModel, UUIDGrandchild,
-    UUIDModel,
-)
+    UUIDModel, PrimaryKeyUUIDClashModel, UUIDClashField)
 
 
 class TestSaveLoad(TestCase):
@@ -134,6 +133,18 @@ class TestAsPrimaryKey(TestCase):
         self.assertTrue(u1_found)
         self.assertTrue(u2_found)
         self.assertEqual(PrimaryKeyUUIDModel.objects.count(), 2)
+
+    def test_uuid_pk_clash(self):
+        # Make sure there's no UPDATE attempt
+        with self.assertNumQueries(1):
+            m = PrimaryKeyUUIDClashModel()
+            m.save()
+        self.assertEqual(m.id, UUIDClashField.const_val)
+        # In the unlikely case of a primary key clash, we want to get
+        # an error, rather than an accidental UPDATE.
+        with self.assertRaises(IntegrityError):
+            m = PrimaryKeyUUIDClashModel()
+            m.save()
 
     def test_underlying_field(self):
         pk_model = PrimaryKeyUUIDModel.objects.create()

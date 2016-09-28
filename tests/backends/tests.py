@@ -127,6 +127,15 @@ class OracleTests(unittest.TestCase):
             cursor.execute(query)
             self.assertEqual(cursor.fetchone()[0], 1)
 
+    def test_oracle_legacy_table_sequence(self):
+        # Make sure that it's possible to use Oracle tables that don't
+        # have Django's trigger by overriding get_pk_value_on_save()
+        c = connection.cursor()
+        c.execute('ALTER TRIGGER "BACKENDS_ORACLELEGACYTABLE_TR" DISABLE')
+        m = models.OracleLegacyTable()
+        m.save()
+        self.assertIsInstance(m.id, int)
+
 
 @unittest.skipUnless(connection.vendor == 'sqlite', "Test only for SQLite")
 class SQLiteTests(TestCase):

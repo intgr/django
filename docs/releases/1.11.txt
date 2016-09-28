@@ -307,6 +307,27 @@ Models
 * Added support for query expressions on lookups that take multiple arguments,
   such as ``range``.
 
+XXXX
+The intent of the "default" attribute is clearly to only apply to newly inserted rows. Using the default value and then
+performing an UPDATE is kind of like UPDATE Russian roulette; if you by accident happened to generate a primary key
+value that already exists in the database, it would -- whereas the expected behavior for a primary key clash would be an
+error.
+XXXX
+Currently, when a primary key column has a default value and .save() is called, Django treats it as if the primary key value was set and attempts to UPDATE it at first. This is inefficient and potentially hazardous -- in the case of e.g. UUID clash, Django will actually UPDATE the unlucky colliding row, whereas the intent of the 'default' attribute is clearly to only apply to INSERTed rows.
+
+But more importantly for my use case, making this change allows using Django ORM for Oracle tables that don't have Django's sequence triggers on them, like this:
+```
+    id = models.IntegerField(primary_key=True, default=RawSQL('"FOO_BAR_SQ".NEXTVAL', ()))
+```
+
+Previously, Django attempted to use the NEXTVAL in the UPDATE's WHERE clause and Oracle would throw "ORA-02287: sequence number not allowed here"
+XXXX
+
+* For primary key fields with the ``default`` attribute, calling ``save()`` with
+  the model's default value now always inserts. Previously, it could cause an
+  accidental update, when the intent of using a default value is clearly to
+  insert.
+
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
