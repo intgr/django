@@ -317,7 +317,7 @@ Currently, when a primary key column has a default value and .save() is called, 
 
 But more importantly for my use case, making this change allows using Django ORM for Oracle tables that don't have Django's sequence triggers on them, like this:
 ```
-    id = models.IntegerField(primary_key=True, default=RawSQL('"FOO_BAR_SQ".NEXTVAL', ()))
+    id = models.AutoField(primary_key=True, default=RawSQL('"FOO_BAR_SQ".NEXTVAL', ()))
 ```
 
 Previously, Django attempted to use the NEXTVAL in the UPDATE's WHERE clause and Oracle would throw "ORA-02287: sequence number not allowed here"
@@ -327,6 +327,13 @@ XXXX
   the model's default value now always inserts. Previously, it could cause an
   accidental update, when the intent of using a default value is clearly to
   insert.
+
+* Support Expression objects (e.g. RawSQL) in the primary key on Oracle and PostgreSQL.
+
+* By overriding AutoField.get_pk_value_on_save, Oracle can now use sequences without a trigger, useful when accessing
+  legacy databases not managed by Django.
+
+Alternative: keep track of whether pk has been assigned to? Seems hacky :(
 
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~

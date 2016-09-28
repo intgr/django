@@ -19,6 +19,7 @@ from django.db import (
 from django.db.models import signals
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.deletion import CASCADE, Collector
+from django.db.models.expressions import BaseExpression
 from django.db.models.fields import AutoField
 from django.db.models.fields.related import (
     ForeignObjectRel, ManyToOneRel, OneToOneField, lazy_related_operation,
@@ -879,15 +880,16 @@ class Model(six.with_metaclass(ModelBase)):
                        if f.name in update_fields or f.attname in update_fields]
 
         pk_val = self._get_pk_val(meta)
-        pk_set = pk_val is not None
-        if not pk_set:
+        updated = False
+
+        if pk_val is None:
             if force_update or update_fields:
                 raise ValueError("Cannot force an update in save() with no primary key.")
+            # Never attempt an UPDATE when using get_pk_value_on_save()
             pk_val = meta.pk.get_pk_value_on_save(self)
             setattr(self, meta.pk.attname, pk_val)
-        updated = False
-        # If possible, try an UPDATE. If that doesn't update anything, do an INSERT.
-        if pk_set and not force_insert:
+        elif not force_insert:
+            # If possible, try an UPDATE. If that doesn't update anything, do an INSERT.
             base_qs = cls._base_manager.using(using)
             values = [(f, None, (getattr(self, f.attname) if raw else f.pre_save(self, False)))
                       for f in non_pks]
@@ -898,6 +900,7 @@ class Model(six.with_metaclass(ModelBase)):
                 raise DatabaseError("Forced update did not affect any rows.")
             if update_fields and not updated:
                 raise DatabaseError("Save with update_fields did not affect any rows.")
+
         if not updated:
             if meta.order_with_respect_to:
                 # If this is a model with an order_with_respect_to
@@ -911,7 +914,7 @@ class Model(six.with_metaclass(ModelBase)):
             if pk_val is None:
                 fields = [f for f in fields if not isinstance(f, AutoField)]
 
-            update_pk = bool(meta.has_auto_field and not pk_set)
+            update_pk = bool(isinstance(pk_val, BaseExpression) or (meta.has_auto_field and pk_val is None))
             result = self._do_insert(cls._base_manager, using, fields, update_pk, raw)
             if update_pk:
                 setattr(self, meta.pk.attname, result)
