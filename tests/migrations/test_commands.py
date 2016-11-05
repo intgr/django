@@ -711,7 +711,7 @@ class MakeMigrationsTests(MigrationTestBase):
         The history consistency checks in makemigrations respect
         settings.DATABASE_ROUTERS.
         """
-        def patched_ensure_schema(migration_recorder):
+        def patched_has_table(migration_recorder):
             if migration_recorder.connection is connections['other']:
                 raise MigrationSchemaMissing('Patched')
             else:
@@ -719,27 +719,26 @@ class MakeMigrationsTests(MigrationTestBase):
 
         self.assertTableNotExists('migrations_unicodemodel')
         apps.register_model('migrations', UnicodeModel)
-        with mock.patch.object(
-                MigrationRecorder, 'ensure_schema',
-                autospec=True, side_effect=patched_ensure_schema) as ensure_schema:
+        with mock.patch.object(MigrationRecorder, 'has_table', autospec=True,
+                               side_effect=patched_has_table) as has_table:
             with self.temporary_migration_module() as migration_dir:
                 call_command("makemigrations", "migrations", verbosity=0)
                 initial_file = os.path.join(migration_dir, "0001_initial.py")
                 self.assertTrue(os.path.exists(initial_file))
-                self.assertEqual(ensure_schema.call_count, 1)  # 'default' is checked
+                self.assertEqual(has_table.call_count, 1)  # 'default' is checked
 
                 # Router says not to migrate 'other' so consistency shouldn't
                 # be checked.
                 with self.settings(DATABASE_ROUTERS=['migrations.routers.TestRouter']):
                     call_command('makemigrations', 'migrations', verbosity=0)
-                self.assertEqual(ensure_schema.call_count, 2)  # 'default' again
+                self.assertEqual(has_table.call_count, 2)  # 'default' again
 
                 # With a router that doesn't prohibit migrating 'other',
                 # consistency is checked.
                 with self.settings(DATABASE_ROUTERS=['migrations.routers.EmptyRouter']):
                     with self.assertRaisesMessage(MigrationSchemaMissing, 'Patched'):
                         call_command('makemigrations', 'migrations', verbosity=0)
-                self.assertEqual(ensure_schema.call_count, 4)  # 'default' and 'other'
+                self.assertEqual(has_table.call_count, 4)  # 'default' and 'other'
 
                 # With a router that doesn't allow migrating on any database,
                 # no consistency checks are made.
@@ -755,7 +754,7 @@ class MakeMigrationsTests(MigrationTestBase):
                     self.assertIn(connection_alias, ['default', 'other'])
                     # Raises an error if invalid app_name/model_name occurs.
                     apps.get_app_config(app_name).get_model(call_kwargs['model_name'])
-                self.assertEqual(ensure_schema.call_count, 4)
+                self.assertEqual(has_table.call_count, 4)
 
     def test_failing_migration(self):
         # If a migration fails to serialize, it shouldn't generate an empty file. #21280

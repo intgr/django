@@ -43,13 +43,19 @@ class MigrationRecorder(object):
     def migration_qs(self):
         return self.Migration.objects.using(self.connection.alias)
 
+    def has_table(self):
+        """
+        Returns True if the migrations table already exists.
+        """
+        return self.Migration._meta.db_table in self.connection.introspection.table_names(self.connection.cursor())
+
     def ensure_schema(self):
         """
         Ensures the table exists and has the correct schema.
         """
         # If the table's there, that's fine - we've never changed its schema
         # in the codebase.
-        if self.Migration._meta.db_table in self.connection.introspection.table_names(self.connection.cursor()):
+        if self.has_table():
             return
         # Make the table
         try:
@@ -62,8 +68,11 @@ class MigrationRecorder(object):
         """
         Returns a set of (app, name) of applied migrations.
         """
-        self.ensure_schema()
-        return set(tuple(x) for x in self.migration_qs.values_list("app", "name"))
+        if self.has_table():
+            return set(tuple(x) for x in self.migration_qs.values_list("app", "name"))
+        else:
+            # No table exists, therefore no migrations could be applied.
+            return set()
 
     def record_applied(self, app, name):
         """
